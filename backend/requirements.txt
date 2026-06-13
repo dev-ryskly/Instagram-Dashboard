@@ -4,3 +4,4 @@ pydantic
 sqlalchemy
 python-dotenv
 psycopg2-binary
+composio

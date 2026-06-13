@@ -1,27 +1,31 @@
-from typing import Any
+from services.composio_client import ComposioClient
 
 
-def get_analytics() -> dict[str, list[dict[str, Any]]]:
+def get_analytics():
+    client = ComposioClient()
+
+    result = client.get_instagram_analytics()
+
+    raw_metrics = result.get("data", {}).get("data", [])
+
+    metrics = []
+
+    for metric in raw_metrics:
+        metrics.append(
+            {
+                "name": metric.get("name", ""),
+                "title": metric.get("title", ""),
+                "description": metric.get("description", ""),
+                "values": [
+                    {
+                        "date": value.get("end_time", "")[:10],
+                        "value": value.get("value", 0),
+                    }
+                    for value in metric.get("values", [])
+                ],
+            }
+        )
+
     return {
-        "follower_growth": [
-            {"date": "2025-08-01", "value": 1200},
-            {"date": "2025-08-02", "value": 1215},
-            {"date": "2025-08-03", "value": 1230},
-            {"date": "2025-08-04", "value": 1240},
-            {"date": "2025-08-05", "value": 1250},
-        ],
-        "engagement_trend": [
-            {"date": "2025-08-01", "value": 210},
-            {"date": "2025-08-02", "value": 245},
-            {"date": "2025-08-03", "value": 198},
-            {"date": "2025-08-04", "value": 276},
-            {"date": "2025-08-05", "value": 290},
-        ],
-        "profile_visits_trend": [
-            {"date": "2025-08-01", "value": 70},
-            {"date": "2025-08-02", "value": 85},
-            {"date": "2025-08-03", "value": 78},
-            {"date": "2025-08-04", "value": 95},
-            {"date": "2025-08-05", "value": 102},
-        ],
+        "metrics": metrics,
     }
