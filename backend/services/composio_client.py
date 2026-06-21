@@ -43,6 +43,7 @@ class ComposioClient:
             "INSTAGRAM_GET_USER_INFO",
             {"ig_user_id": "me"},
             user_id=self.user_id,
+            dangerously_skip_version_check=True,
         )
 
         data = result.get("data", {})
@@ -62,6 +63,7 @@ class ComposioClient:
             "INSTAGRAM_GET_IG_USER_MEDIA",
             {"ig_user_id": "me"},
             user_id=self.user_id,
+            dangerously_skip_version_check=True,
         )
 
         return result.get("data", {}).get("data", [])
@@ -78,6 +80,7 @@ class ComposioClient:
                 "metric": metrics,
             },
             user_id=self.user_id,
+            dangerously_skip_version_check=True,
         )
 
         print("INSTAGRAM POST INSIGHTS:")
@@ -92,6 +95,90 @@ class ComposioClient:
                 "ig_user_id": "me",
             },
             user_id=self.user_id,
+            dangerously_skip_version_check=True,
         )
+
+        print("INSTAGRAM ANALYTICS:")
+        print(result)
+
+        return result
+
+    def get_instagram_publishing_limit(self) -> dict[str, Any]:
+        result = self.client.tools.execute(
+            "INSTAGRAM_GET_IG_USER_CONTENT_PUBLISHING_LIMIT",
+            {
+                "ig_user_id": "me",
+                "fields": "quota_usage,config",
+            },
+            user_id=self.user_id,
+            dangerously_skip_version_check=True,
+        )
+
+        print("INSTAGRAM PUBLISHING LIMIT:")
+        print(result)
+
+        return result
+
+    def create_instagram_media(
+        self,
+        image_url: str | None,
+        video_url: str | None,
+        caption: str | None,
+        media_type: str | None,
+    ) -> dict[str, Any]:
+        payload = {
+            "ig_user_id": "me",
+        }
+
+        if image_url:
+            payload["image_url"] = image_url
+
+        if video_url:
+            payload["video_url"] = video_url
+
+        if caption:
+            payload["caption"] = caption
+
+        if media_type:
+            payload["media_type"] = media_type
+
+        print("INSTAGRAM MEDIA PAYLOAD:")
+        print(payload)
+
+        result = self.client.tools.execute(
+            "INSTAGRAM_POST_IG_USER_MEDIA",
+            payload,
+            user_id=self.user_id,
+            dangerously_skip_version_check=True,
+        )
+
+        print("INSTAGRAM CREATE MEDIA:")
+        print(result)
+
+        return result
+
+    def publish_instagram_media(
+        self,
+        creation_id: str,
+    ) -> dict[str, Any]:
+        payload = {
+            "ig_user_id": "me",
+            "creation_id": creation_id,
+            "max_wait_seconds": 120,
+            "poll_interval_seconds": 3,
+        }
+
+        print("INSTAGRAM PUBLISH PAYLOAD:")
+        print(payload)
+
+        result = self.client.tools.execute(
+            "INSTAGRAM_POST_IG_USER_MEDIA_PUBLISH",
+            payload,
+            user_id=self.user_id,
+            dangerously_skip_version_check=True,
+        )
+
+        print("INSTAGRAM PUBLISH RESULT:")
+        print(result)
 
         return result

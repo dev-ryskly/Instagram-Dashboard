@@ -2,12 +2,15 @@ from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import Query
 from sqlalchemy.orm import Session
-
+from models.publish_media import PublishInstagramMediaRequest
+from services.publish_media_service import publish_media
 from database.postgres import get_db
 from models.analytics import InstagramAnalytics
 from models.audit import InstagramAudit
+from models.create_media import CreateInstagramMediaRequest
 from models.post import InstagramPost
 from models.profile import InstagramProfile
+from models.publishing_limit import InstagramPublishingLimit
 from repositories.profile_repository import create_profile_snapshot
 from repositories.profile_repository import get_latest_profile_snapshot
 from services.analytics_service import get_analytics
@@ -15,6 +18,13 @@ from services.audit_service import get_audit
 from services.composio_client import ComposioClient
 from services.instagram_service import get_posts
 from services.instagram_service import get_profile
+from services.media_service import create_media
+from services.publishing_limit_service import get_publishing_limit
+from models.publish_and_track import PublishAndTrackRequest
+from models.publish_and_track import PublishAndTrackResponse
+from services.publish_and_track_service import publish_and_track
+from models.reel_detail import ReelDetailResponse
+from services.reel_detail_service import get_reel_detail
 
 router = APIRouter(prefix="/instagram", tags=["Instagram"])
 
@@ -56,7 +66,9 @@ def get_instagram_audit():
 
 
 @router.post("/profile/seed")
-def seed_profile_snapshot(db: Session = Depends(get_db)):
+def seed_profile_snapshot(
+    db: Session = Depends(get_db),
+):
     return create_profile_snapshot(
         db=db,
         followers=1250,
@@ -67,5 +79,64 @@ def seed_profile_snapshot(db: Session = Depends(get_db)):
 
 
 @router.get("/profile/latest")
-def get_latest_profile(db: Session = Depends(get_db)):
+def get_latest_profile(
+    db: Session = Depends(get_db),
+):
     return get_latest_profile_snapshot(db)
+
+
+@router.get(
+    "/publishing-limit",
+    response_model=InstagramPublishingLimit,
+)
+def get_instagram_publishing_limit():
+    return get_publishing_limit()
+
+
+@router.post("/media")
+def create_instagram_media(
+    request: CreateInstagramMediaRequest,
+):
+    return create_media(
+        image_url=request.image_url,
+        video_url=request.video_url,
+        caption=request.caption,
+        media_type=request.media_type,
+    )
+@router.post("/publish")
+def publish_instagram_media(
+    request: PublishInstagramMediaRequest,
+):
+    return publish_media(
+        creation_id=request.creation_id,
+    )
+
+
+@router.post(
+    "/publish-and-track",
+    response_model=PublishAndTrackResponse,
+)
+def publish_and_track_reel(
+    request: PublishAndTrackRequest,
+    db: Session = Depends(get_db),
+):
+    return publish_and_track(
+        db=db,
+        image_url=request.image_url,
+        video_url=request.video_url,
+        caption=request.caption,
+        media_type=request.media_type,
+        campaign_name=request.campaign_name,
+        destination_url=request.destination_url,
+    )
+
+
+@router.get(
+    "/reels/{media_id}/detail",
+    response_model=ReelDetailResponse,
+)
+def get_instagram_reel_detail(
+    media_id: str,
+    db: Session = Depends(get_db),
+):
+    return get_reel_detail(db=db, media_id=media_id)
