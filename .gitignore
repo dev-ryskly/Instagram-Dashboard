@@ -1,1 +1,17 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/*.pyc
+backend/static/uploads/
+backend/instagram_dashboard.db
+
+# Node / JS
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
 .aider*

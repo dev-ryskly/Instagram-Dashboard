@@ -83,7 +83,7 @@ body {
   font-size: 0.9375rem;
   line-height: 1.6;
   color: var(--text-primary);
-  background-color: transparent;
+  background-color: var(--bg-base);
   min-height: 100vh;
 }
 
