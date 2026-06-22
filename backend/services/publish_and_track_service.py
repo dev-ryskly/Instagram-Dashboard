@@ -3,6 +3,7 @@ import uuid
 from sqlalchemy.orm import Session
 
 from repositories.reel_link_repository import create_reel_link
+from repositories.tracking_config_repository import update_config
 from services.media_service import create_media
 from services.publish_media_service import publish_media
 
@@ -43,6 +44,7 @@ def publish_and_track(
 
     slug = uuid.uuid4().hex[:8]
 
+    # Save to reel_links for historical records
     create_reel_link(
         db=db,
         reel_id=reel_id,
@@ -51,9 +53,17 @@ def publish_and_track(
         destination_url=destination_url,
     )
 
+    # Set as the active reel in the permanent tracking config
+    update_config(
+        db=db,
+        active_reel_id=reel_id,
+        tracking_enabled=True,
+        destination_url=destination_url,
+    )
+
     return {
         "reel_id": reel_id,
-        "slug": slug,
-        "tracking_url": f"/r/{slug}",
+        "slug": "studojo",
+        "tracking_url": "/r/studojo",
         "instagram_publish_result": publish_result,
     }
