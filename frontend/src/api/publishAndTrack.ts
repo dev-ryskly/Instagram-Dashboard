@@ -17,23 +17,25 @@ export interface PublishAndTrackResponse {
   instagram_publish_result: Record<string, unknown>;
 }
 
-export async function uploadMediaFiles(files: File[]): Promise<string[]> {
-  const formData = new FormData()
-  files.forEach((file) => {
-    formData.append('files', file)
-  })
+export interface UploadMediaResponse {
+  file_url: string;
+  media_type: 'IMAGE' | 'VIDEO';
+}
 
-  const response = await fetch(`${BASE_URL}/instagram/upload`, {
+export async function uploadMediaFile(file: File): Promise<UploadMediaResponse> {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch(`${BASE_URL}/instagram/upload-media`, {
     method: 'POST',
     body: formData,
   })
 
   if (!response.ok) {
-    throw new Error(`Failed to upload media files: ${response.status} ${response.statusText}`)
+    throw new Error(`Failed to upload media: ${response.status} ${response.statusText}`)
   }
 
-  const data = await response.json() as { urls: string[] }
-  return data.urls
+  return response.json() as Promise<UploadMediaResponse>
 }
 
 export async function publishAndTrack(

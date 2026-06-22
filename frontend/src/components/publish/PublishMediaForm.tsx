@@ -3,7 +3,7 @@ import MediaPicker from './MediaPicker'
 import MediaPreviewList from './MediaPreviewList'
 import CaptionInput from './CaptionInput'
 import PublishButton from './PublishButton'
-import { uploadMediaFiles, publishAndTrack, type PublishAndTrackResponse } from '../../api/publishAndTrack'
+import { uploadMediaFile, publishAndTrack, type PublishAndTrackResponse } from '../../api/publishAndTrack'
 
 export type PublishType = 'Reel' | 'Post' | 'Carousel'
 
@@ -53,8 +53,11 @@ export default function PublishMediaForm({ onSuccess, onError, onLoadingChange }
     onLoadingChange(true)
     setValidationError(null)
     try {
-      // 1. Upload files to translation layer
-      const uploadedUrls = await uploadMediaFiles(files)
+      // 1. Upload files to translation layer in parallel
+      const uploadResults = await Promise.all(
+        files.map((file) => uploadMediaFile(file))
+      )
+      const uploadedUrls = uploadResults.map((r) => r.file_url)
       if (uploadedUrls.length === 0) {
         throw new Error('Upload failed: no URLs returned')
       }

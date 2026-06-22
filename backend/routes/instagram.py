@@ -138,28 +138,41 @@ def publish_and_track_reel(
     )
 
 
-@router.post("/upload")
-def upload_media_files(
+@router.post("/upload-media")
+def upload_media_file(
     request: Request,
-    files: list[UploadFile] = File(...),
+    file: UploadFile = File(...),
 ):
     os.makedirs("static/uploads", exist_ok=True)
-    urls = []
-    for file in files:
-        file_ext = os.path.splitext(file.filename or "")[1]
-        unique_filename = f"{uuid.uuid4().hex}{file_ext}"
-        file_path = os.path.join("static/uploads", unique_filename)
-        
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            
-        base_url = str(request.base_url)
-        if not base_url.endswith("/"):
-            base_url += "/"
-        url = f"{base_url}static/uploads/{unique_filename}"
-        urls.append(url)
-        
-    return {"urls": urls}
+    file_ext = os.path.splitext(file.filename or "")[1].lower()
+
+    allowed_exts = [".jpg", ".jpeg", ".png", ".mp4", ".mov"]
+    if file_ext not in allowed_exts:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file extension: {file_ext}. Allowed: {', '.join(allowed_exts)}"
+        )
+
+    unique_filename = f"{uuid.uuid4().hex}{file_ext}"
+    file_path = os.path.join("static/uploads", unique_filename)
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    base_url = str(request.base_url)
+    if not base_url.endswith("/"):
+        base_url += "/"
+    file_url = f"{base_url}static/uploads/{unique_filename}"
+
+    # Auto-detect media type
+    is_video = file_ext in [".mp4", ".mov"]
+    media_type = "VIDEO" if is_video else "IMAGE"
+
+    return {
+        "file_url": file_url,
+        "media_type": media_type
+    }
 
 
 @router.get(
