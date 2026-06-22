@@ -121,10 +121,11 @@ class ComposioClient:
 
     def create_instagram_media(
         self,
-        image_url: str | None,
-        video_url: str | None,
-        caption: str | None,
-        media_type: str | None,
+        image_url: str | None = None,
+        video_url: str | None = None,
+        caption: str | None = None,
+        media_type: str | None = None,
+        **kwargs,
     ) -> dict[str, Any]:
         payload = {
             "ig_user_id": "me",
@@ -141,6 +142,10 @@ class ComposioClient:
 
         if media_type:
             payload["media_type"] = media_type
+
+        for k, v in kwargs.items():
+            if v is not None:
+                payload[k] = v
 
         print("INSTAGRAM MEDIA PAYLOAD:")
         print(payload)

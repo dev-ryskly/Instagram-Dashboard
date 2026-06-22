@@ -15,6 +15,11 @@ class PublishAndTrackRequest(BaseModel):
         description="Public video URL",
     )
 
+    media_urls: list[str] | None = Field(
+        default=None,
+        description="List of public media URLs for carousel posts",
+    )
+
     caption: str | None = Field(
         default=None,
         description="Instagram caption",

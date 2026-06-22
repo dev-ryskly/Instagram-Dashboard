@@ -4,6 +4,8 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi.staticfiles import StaticFiles
+
 from database.init_db import init_db
 from routes.dashboard import router as dashboard_router
 from routes.integrations import router as integrations_router
@@ -13,6 +15,7 @@ from routes.tracking import router as tracking_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    os.makedirs("static/uploads", exist_ok=True)
     init_db()
     yield
 
@@ -22,6 +25,8 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 _default_origins = "http://localhost:5173"
 _origins = [

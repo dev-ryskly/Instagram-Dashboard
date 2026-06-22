@@ -15,12 +15,14 @@ def publish_and_track(
     media_type: str | None,
     campaign_name: str,
     destination_url: str,
+    media_urls: list[str] | None = None,
 ) -> dict:
     media_result = create_media(
         image_url=image_url,
         video_url=video_url,
         caption=caption,
         media_type=media_type,
+        media_urls=media_urls,
     )
 
     creation_id = media_result.get("data", {}).get("id")

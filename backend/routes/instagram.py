@@ -1,7 +1,13 @@
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import Query
+from fastapi import Request
+from fastapi import UploadFile
+from fastapi import File
 from sqlalchemy.orm import Session
+import os
+import uuid
+import shutil
 from models.publish_media import PublishInstagramMediaRequest
 from services.publish_media_service import publish_media
 from database.postgres import get_db
@@ -128,7 +134,32 @@ def publish_and_track_reel(
         media_type=request.media_type,
         campaign_name=request.campaign_name,
         destination_url=request.destination_url,
+        media_urls=request.media_urls,
     )
+
+
+@router.post("/upload")
+def upload_media_files(
+    request: Request,
+    files: list[UploadFile] = File(...),
+):
+    os.makedirs("static/uploads", exist_ok=True)
+    urls = []
+    for file in files:
+        file_ext = os.path.splitext(file.filename or "")[1]
+        unique_filename = f"{uuid.uuid4().hex}{file_ext}"
+        file_path = os.path.join("static/uploads", unique_filename)
+        
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        base_url = str(request.base_url)
+        if not base_url.endswith("/"):
+            base_url += "/"
+        url = f"{base_url}static/uploads/{unique_filename}"
+        urls.append(url)
+        
+    return {"urls": urls}
 
 
 @router.get(
