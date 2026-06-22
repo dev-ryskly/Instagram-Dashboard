@@ -160,10 +160,21 @@ def upload_media_file(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    base_url = str(request.base_url)
-    if not base_url.endswith("/"):
-        base_url += "/"
-    file_url = f"{base_url}static/uploads/{unique_filename}"
+    # Construct public base URL, prioritizing Render's environment URL, then proxy headers, then request.base_url
+    base_url = os.getenv("RENDER_EXTERNAL_URL")
+    if not base_url:
+        proto = request.headers.get("x-forwarded-proto", "http")
+        host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+        if host:
+            base_url = f"{proto}://{host}"
+        else:
+            base_url = str(request.base_url)
+
+    if base_url:
+        base_url = base_url.rstrip("/")
+        file_url = f"{base_url}/static/uploads/{unique_filename}"
+    else:
+        file_url = f"/static/uploads/{unique_filename}"
 
     # Auto-detect media type
     is_video = file_ext in [".mp4", ".mov"]
