@@ -1,6 +1,5 @@
-"use client";
-
 import { motion } from "framer-motion";
+import AnimatedShaderBackground from "./animated-shader-background";
 
 function FloatingPaths({ position }: { position: number }) {
     const paths = Array.from({ length: 36 }, (_, i) => ({
@@ -63,6 +62,9 @@ export function BackgroundPaths({
 }) {
     return (
         <div className="relative min-h-screen w-full overflow-hidden bg-[#07080a]">
+            {/* WebGL Animated Aurora Shader */}
+            <AnimatedShaderBackground opacity={0.25} />
+
             {/* Ambient Shader Blobs */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                 <motion.div 
