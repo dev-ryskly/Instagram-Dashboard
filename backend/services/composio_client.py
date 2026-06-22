@@ -140,8 +140,8 @@ class ComposioClient:
         if caption:
             payload["caption"] = caption
 
-        if media_type:
-            payload["media_type"] = media_type
+        if media_type and media_type.upper() in ["REELS", "CAROUSEL", "STORIES"]:
+            payload["media_type"] = media_type.upper()
 
         for k, v in kwargs.items():
             if v is not None:
