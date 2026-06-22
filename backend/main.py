@@ -15,10 +15,12 @@ from routes.tracking import router as tracking_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    os.makedirs("static/uploads", exist_ok=True)
     init_db()
     yield
 
+
+# Ensure the static/uploads directory exists before initializing StaticFiles
+os.makedirs("static/uploads", exist_ok=True)
 
 app = FastAPI(
     title="Instagram Analytics API",
