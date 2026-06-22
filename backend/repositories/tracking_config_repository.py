@@ -13,9 +13,13 @@ def get_or_create_config(db: Session) -> TrackingConfigDB:
         config = TrackingConfigDB(
             active_reel_id=None,
             tracking_enabled=False,
-            destination_url="",
+            destination_url="https://studojo.com",
         )
         db.add(config)
+        db.commit()
+        db.refresh(config)
+    elif not config.destination_url or not config.destination_url.strip():
+        config.destination_url = "https://studojo.com"
         db.commit()
         db.refresh(config)
     return config
@@ -33,7 +37,7 @@ def update_config(
         config.active_reel_id = active_reel_id
     if tracking_enabled is not None:
         config.tracking_enabled = tracking_enabled
-    if destination_url is not None:
+    if destination_url is not None and destination_url.strip():
         config.destination_url = destination_url
 
     db.commit()

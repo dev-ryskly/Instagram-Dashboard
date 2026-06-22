@@ -34,7 +34,18 @@ export async function updateTrackingConfig(
   })
 
   if (!response.ok) {
-    throw new Error(`Failed to update tracking config: ${response.status} ${response.statusText}`)
+    let errorMsg = `Failed to update tracking config: ${response.status} ${response.statusText}`
+    try {
+      const data = await response.json()
+      if (data && data.detail) {
+        errorMsg = data.detail
+      } else if (data && data.message) {
+        errorMsg = data.message
+      }
+    } catch {
+      // Use fallback
+    }
+    throw new Error(errorMsg)
   }
 
   return response.json() as Promise<TrackingConfig>

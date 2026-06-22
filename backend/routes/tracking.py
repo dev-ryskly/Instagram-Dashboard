@@ -71,6 +71,15 @@ def put_tracking_config(
     body: UpdateTrackingConfigRequest,
     db: Session = Depends(get_db),
 ):
+    if body.destination_url is not None and not body.destination_url.strip():
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": "destination_url cannot be empty",
+                "message": "destination_url cannot be empty"
+            }
+        )
     return update_config(
         db=db,
         active_reel_id=body.active_reel_id,
