@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { getContent } from '../api/content'
 import type { InstagramContent } from '../api/content'
-import { getTrackingLinks } from '../api/tracking'
+import { getTrackingConfig } from '../api/trackingConfig'
 import ContentCard from '../components/content/ContentCard'
 import ReelDetailModal from '../components/content/ReelDetailModal'
 
 export default function ContentLibrary() {
   const [items, setItems] = useState<InstagramContent[]>([])
-  const [trackedIds, setTrackedIds] = useState<Set<string>>(new Set())
+  // The single reel currently being tracked (null = tracking off)
+  const [activeReelId, setActiveReelId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -17,11 +18,13 @@ export default function ContentLibrary() {
   useEffect(() => {
     Promise.all([
       getContent(),
-      getTrackingLinks().catch(() => []) // fail gracefully if tracking API fails
+      getTrackingConfig().catch(() => null), // fail gracefully
     ])
-      .then(([contentItems, trackingLinks]) => {
+      .then(([contentItems, trackingConfig]) => {
         setItems(contentItems)
-        setTrackedIds(new Set(trackingLinks.map((l) => l.reel_id)))
+        if (trackingConfig?.tracking_enabled && trackingConfig.active_reel_id) {
+          setActiveReelId(trackingConfig.active_reel_id)
+        }
       })
       .catch(() => setError('Failed to load content'))
       .finally(() => setLoading(false))
@@ -96,7 +99,7 @@ export default function ContentLibrary() {
                 <ContentCard
                   key={item.id}
                   item={item}
-                  hasTracking={trackedIds.has(item.id)}
+                  hasTracking={item.id === activeReelId}
                   onClick={setSelectedItem}
                 />
               ))

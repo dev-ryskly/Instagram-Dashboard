@@ -1,197 +1,160 @@
 import { useEffect, useState } from 'react'
-import { getTrackingLinks, createTrackingLink, deleteTrackingLink, type ReelLink } from '../../api/tracking'
+
+import {
+  getTrackingConfig,
+  updateTrackingConfig,
+  PERMANENT_TRACKING_URL,
+  type TrackingConfig,
+} from '../../api/trackingConfig'
 
 type TrackingManagerProps = {
+  /** The reel shown in the current modal. */
   reelId: string
 }
 
 export default function TrackingManager({ reelId }: TrackingManagerProps) {
-  const [status, setStatus] = useState<'loading' | 'enabled' | 'disabled' | 'error'>('loading')
-  const [link, setLink] = useState<ReelLink | null>(null)
-  
-  // Form state
-  const [campaignName, setCampaignName] = useState('')
-  const [destinationUrl, setDestinationUrl] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [config, setConfig] = useState<TrackingConfig | null>(null)
+  const [loading, setLoading] = useState(true)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [isBusy, setIsBusy] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [isDisabling, setIsDisabling] = useState(false)
 
   useEffect(() => {
-    getTrackingLinks()
-      .then((links) => {
-        const found = links.find((l) => l.reel_id === reelId)
-        if (found) {
-          setLink(found)
-          setStatus('enabled')
-        } else {
-          setStatus('disabled')
-        }
-      })
-      .catch(() => {
-        setStatus('error')
-        setErrorMsg('Failed to check tracking status')
-      })
-  }, [reelId])
+    getTrackingConfig()
+      .then(setConfig)
+      .catch(() => setErrorMsg('Failed to load tracking config'))
+      .finally(() => setLoading(false))
+  }, [])
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+  // ── derived state ─────────────────────────────────────────────
+  const isThisReelActive =
+    config?.tracking_enabled === true && config?.active_reel_id === reelId
+
+  const isTrackingActive = config?.tracking_enabled === true
+
+  // ── actions ───────────────────────────────────────────────────
+
+  const handleTrackThisReel = async () => {
+    setIsBusy(true)
     setErrorMsg(null)
-
     try {
-      const slug = Math.random().toString(36).substring(2, 8)
-      const newLink = await createTrackingLink({
-        reel_id: reelId,
-        campaign_name: campaignName,
-        slug,
-        destination_url: destinationUrl,
+      const updated = await updateTrackingConfig({
+        active_reel_id: reelId,
+        tracking_enabled: true,
       })
-      
-      setLink(newLink)
-      setStatus('enabled')
+      setConfig(updated)
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setErrorMsg(err.message)
-      } else {
-        setErrorMsg('An unknown error occurred')
-      }
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to enable tracking')
     } finally {
-      setIsSubmitting(false)
+      setIsBusy(false)
+    }
+  }
+
+  const handleStopTracking = async () => {
+    setIsBusy(true)
+    setErrorMsg(null)
+    try {
+      const updated = await updateTrackingConfig({ tracking_enabled: false })
+      setConfig(updated)
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to stop tracking')
+    } finally {
+      setIsBusy(false)
     }
   }
 
   const handleCopy = () => {
-    if (link) {
-      const trackingUrl = `${import.meta.env.VITE_API_URL ?? 'http://localhost:8000'}/r/${link.slug}`
-      navigator.clipboard.writeText(trackingUrl).then(() => {
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-      })
-    }
+    navigator.clipboard.writeText(PERMANENT_TRACKING_URL).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
   }
 
-  const handleDisable = async () => {
-    setIsDisabling(true)
-    setErrorMsg(null)
-    
-    try {
-      await deleteTrackingLink(reelId)
-      setLink(null)
-      setStatus('disabled')
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setErrorMsg(err.message)
-      } else {
-        setErrorMsg('An unknown error occurred while disabling tracking')
-      }
-      setStatus('error')
-    } finally {
-      setIsDisabling(false)
-    }
-  }
+  // ── render ────────────────────────────────────────────────────
 
-  if (status === 'loading') {
+  if (loading) {
     return (
       <div className="tracking-manager tracking-manager--loading">
-        <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--radius-md)' }} />
-      </div>
-    )
-  }
-
-  if (status === 'error') {
-    return (
-      <div className="tracking-manager tracking-manager--error">
-        <div className="error-banner">{errorMsg}</div>
-      </div>
-    )
-  }
-
-  if (status === 'enabled' && link) {
-    const trackingUrl = `${import.meta.env.VITE_API_URL ?? 'http://localhost:8000'}/r/${link.slug}`
-    
-    return (
-      <div className="tracking-manager tracking-manager--enabled">
-        <div className="tracking-manager__header">
-          <span className="badge badge-success">🟢 Tracking Enabled</span>
-        </div>
-        
-        <div className="tracking-manager__link-box">
-          <input
-            type="text"
-            className="form-input tracking-manager__input"
-            value={trackingUrl}
-            readOnly
-          />
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={handleCopy}
-            disabled={isDisabling}
-          >
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={handleDisable}
-            disabled={isDisabling}
-            style={{ color: 'var(--error)' }}
-          >
-            {isDisabling ? 'Disabling...' : 'Disable'}
-          </button>
-        </div>
-        
-        <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: 'var(--space-2)' }}>
-          Campaign: {link.campaign_name}
-        </p>
+        <div className="skeleton" style={{ height: '60px', borderRadius: 'var(--radius-md)' }} />
       </div>
     )
   }
 
   return (
-    <div className="tracking-manager tracking-manager--disabled">
-      <div className="tracking-manager__header">
-        <span className="badge badge-muted">⚪ Tracking Disabled</span>
+    <div className="tracking-manager">
+
+      {/* ── Global tracking status ─────────────────────────────── */}
+      {isThisReelActive ? (
+        <div className="tracking-manager__header">
+          <span className="badge badge-success">🟢 Tracking Active</span>
+          <span className="text-muted" style={{ fontSize: '0.8rem' }}>
+            Clicks on your bio link are attributed to this reel
+          </span>
+        </div>
+      ) : isTrackingActive && config ? (
+        <div className="tracking-manager__header">
+          <span className="badge badge-muted">⚪ Tracking Disabled for this reel</span>
+          <span className="text-muted" style={{ fontSize: '0.8rem' }}>
+            Currently tracking: {config.active_reel_id ?? 'another reel'}
+          </span>
+        </div>
+      ) : (
+        <div className="tracking-manager__header">
+          <span className="badge badge-muted">⚪ Tracking Disabled</span>
+        </div>
+      )}
+
+      {/* ── Permanent bio link ─────────────────────────────────── */}
+      <div className="tracking-manager__link-box">
+        <input
+          type="text"
+          className="form-input tracking-manager__input"
+          value={PERMANENT_TRACKING_URL}
+          readOnly
+          aria-label="Permanent tracking URL"
+        />
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={handleCopy}
+          disabled={isBusy}
+        >
+          {copied ? 'Copied!' : 'Copy Link'}
+        </button>
       </div>
 
-      <form className="tracking-manager__form" onSubmit={handleCreate}>
-        <div className="result-field">
-          <label className="text-muted" style={{ fontSize: '0.8rem' }}>Campaign Name</label>
-          <input
-            type="text"
-            className="form-input"
-            value={campaignName}
-            onChange={(e) => setCampaignName(e.target.value)}
-            placeholder="e.g. Summer Sale 2026"
-            required
-            disabled={isSubmitting}
-          />
+      {/* ── Error ─────────────────────────────────────────────── */}
+      {errorMsg && (
+        <div className="error-banner" style={{ marginTop: 'var(--space-2)' }}>
+          {errorMsg}
         </div>
-        
-        <div className="result-field">
-          <label className="text-muted" style={{ fontSize: '0.8rem' }}>Destination URL</label>
-          <input
-            type="url"
-            className="form-input"
-            value={destinationUrl}
-            onChange={(e) => setDestinationUrl(e.target.value)}
-            placeholder="https://yourstore.com/product"
-            required
-            disabled={isSubmitting}
-          />
-        </div>
+      )}
 
-        {errorMsg && <div className="error-banner" style={{ marginTop: 'var(--space-2)' }}>{errorMsg}</div>}
+      {/* ── Actions ───────────────────────────────────────────── */}
+      <div className="tracking-manager__actions">
+        {!isThisReelActive && (
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={handleTrackThisReel}
+            disabled={isBusy}
+          >
+            {isBusy ? 'Updating...' : 'Track This Reel'}
+          </button>
+        )}
 
-        <button
-          type="submit"
-          className="btn-primary tracking-manager__submit"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? 'Enabling...' : 'Enable Tracking'}
-        </button>
-      </form>
+        {isTrackingActive && (
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={handleStopTracking}
+            disabled={isBusy}
+            style={{ color: 'var(--error)' }}
+          >
+            {isBusy ? 'Stopping...' : 'Stop Tracking'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
