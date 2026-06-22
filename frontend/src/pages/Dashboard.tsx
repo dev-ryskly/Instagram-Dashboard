@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { getDashboardV2 } from '../api/dashboardV2'
 import type { DashboardV2Response, ReelDashboardItem } from '../api/dashboardV2'
-import { getTrackingConfig } from '../api/trackingConfig'
+import { getTrackingConfig, type TrackingConfig } from '../api/trackingConfig'
 import StatCard from '../components/dashboard/StatCard'
 
 const MEDIA_TYPE_LABELS: Record<string, string> = {
@@ -12,10 +12,9 @@ const MEDIA_TYPE_LABELS: Record<string, string> = {
   CAROUSEL_ALBUM: 'Carousel',
 }
 
-function ReelRow({ reel, activeReelId }: { reel: ReelDashboardItem; activeReelId: string | null }) {
+function ReelRow({ reel, isTracked }: { reel: ReelDashboardItem; isTracked: boolean }) {
   const conversionRateDisplay = `${(reel.conversion_rate * 100).toFixed(2)}%`
   const mediaLabel = MEDIA_TYPE_LABELS[reel.media_type] ?? reel.media_type
-  const isActive = reel.reel_id === activeReelId
 
   return (
     <div className="reel-row">
@@ -76,7 +75,7 @@ function ReelRow({ reel, activeReelId }: { reel: ReelDashboardItem; activeReelId
 
       {/* Tracking status */}
       <div className="reel-row__tracking">
-        {isActive ? (
+        {isTracked ? (
           <span className="badge badge-success">🟢 Tracking Active</span>
         ) : (
           <span className="badge badge-muted">⚪ Not Tracked</span>
@@ -88,7 +87,7 @@ function ReelRow({ reel, activeReelId }: { reel: ReelDashboardItem; activeReelId
 
 export default function Dashboard() {
   const [dashboard, setDashboard] = useState<DashboardV2Response | null>(null)
-  const [activeReelId, setActiveReelId] = useState<string | null>(null)
+  const [trackingConfig, setTrackingConfig] = useState<TrackingConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -97,11 +96,9 @@ export default function Dashboard() {
       getDashboardV2(),
       getTrackingConfig().catch(() => null),
     ])
-      .then(([dashboardData, trackingConfig]) => {
+      .then(([dashboardData, configData]) => {
         setDashboard(dashboardData)
-        if (trackingConfig?.tracking_enabled && trackingConfig.active_reel_id) {
-          setActiveReelId(trackingConfig.active_reel_id)
-        }
+        setTrackingConfig(configData)
       })
       .catch(() => setError('Failed to load dashboard'))
       .finally(() => setLoading(false))
@@ -196,9 +193,15 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {dashboard.reels.map((reel) => (
-              <ReelRow key={reel.reel_id} reel={reel} activeReelId={activeReelId} />
-            ))}
+            {dashboard.reels.map((reel) => {
+              const isTracked =
+                trackingConfig?.tracking_enabled === true &&
+                reel.reel_id === trackingConfig.active_reel_id
+
+              return (
+                <ReelRow key={reel.reel_id} reel={reel} isTracked={isTracked} />
+              )
+            })}
           </div>
         )}
       </div>
