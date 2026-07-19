@@ -1,4 +1,5 @@
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from sqlalchemy.orm import Session
 
@@ -68,17 +69,34 @@ def get_dashboard_v2(db: Session) -> DashboardV2Response:
 
     tracked_reel_ids: set[str] = {link.reel_id for link in all_links}
 
-    # ── 3. Fetch Instagram insights per post ──────────────────────────────
+    # ── 3. Fetch Instagram insights in PARALLEL (fixes N+1 serial slowness) ──
     client = ComposioClient()
 
+    valid_posts = [p for p in posts if p.get("id")]
+
+    # Fetch all insights concurrently — turns N serial requests into 1 batch wait
+    insights_by_id: dict[str, list[dict]] = {}
+    max_workers = min(len(valid_posts), 10)  # cap at 10 concurrent threads
+    if valid_posts:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_id = {
+                executor.submit(_fetch_insights, client, post["id"]): post["id"]
+                for post in valid_posts
+            }
+            for future in as_completed(future_to_id):
+                media_id = future_to_id[future]
+                try:
+                    insights_by_id[media_id] = future.result()
+                except Exception as exc:
+                    print(f"[dashboard_v2] parallel fetch error for {media_id}: {exc}")
+                    insights_by_id[media_id] = []
+
+    # ── 4. Build items from cached insights ───────────────────────────────
     items: list[ReelDashboardItem] = []
 
-    for post in posts:
-        media_id: str = post.get("id", "")
-        if not media_id:
-            continue
-
-        insights_list = _fetch_insights(client, media_id)
+    for post in valid_posts:
+        media_id: str = post["id"]
+        insights_list = insights_by_id.get(media_id, [])
 
         clicks = visits_by_reel[media_id]
         convs = conversions_by_reel[media_id]
@@ -104,7 +122,7 @@ def get_dashboard_v2(db: Session) -> DashboardV2Response:
             )
         )
 
-    # ── 4. Compute aggregates ─────────────────────────────────────────────
+    # ── 5. Compute aggregates ─────────────────────────────────────────────
     total_clicks = sum(item.click_count for item in items)
     total_conversions = sum(item.conversion_count for item in items)
     overall_rate = (

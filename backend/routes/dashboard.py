@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from fastapi import Depends
+from fastapi import Response
 from sqlalchemy.orm import Session
 
 from database.postgres import get_db
@@ -20,6 +21,9 @@ def get_dashboard(
 
 @router.get("/v2", response_model=DashboardV2Response)
 def get_dashboard_v2_endpoint(
+    response: Response,
     db: Session = Depends(get_db),
 ):
+    # Cache for 60s in browser / CDN — avoids hammering Instagram API on every load
+    response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=30"
     return get_dashboard_v2(db)
